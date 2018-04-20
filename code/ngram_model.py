@@ -33,15 +33,15 @@ def train_ngrams(dataset):
     token_count = 0
 
     for sen in dataset:
-        for i in range(len(sen)):
-            token_count += 1
+        for i in range(2, len(sen)):
             unigram_counts[sen[i]] = unigram_counts.get(sen[i], 0) + 1
-            if i > 1:
-                bigram = (sen[i - 1], sen[i])
-                bigram_counts[bigram] = bigram_counts.get(bigram, 0) + 1
-            if i > 2:
-                trigram = (sen[i - 2], sen[i - 1], sen[i])
-                trigram_counts[trigram] = trigram_counts.get(trigram, 0) + 1
+            # if i > 1:
+            bigram = (sen[i - 1], sen[i])
+            bigram_counts[bigram] = bigram_counts.get(bigram, 0) + 1
+            # if i > 2:
+            trigram = (sen[i - 2], sen[i - 1], sen[i])
+            trigram_counts[trigram] = trigram_counts.get(trigram, 0) + 1
+            token_count += 1
 
     return trigram_counts, bigram_counts, unigram_counts, token_count
 
@@ -60,11 +60,11 @@ def evaluate_ngrams(eval_dataset, trigram_counts, bigram_counts, unigram_counts,
         for i in range(2, len(sen)):
             M += 1
             q1, q2, q3 = 0, 0, 0
-            if (sen[i - 2], sen[i - 1], sen[i]) in trigram_counts and (sen[i - 1], sen[i]) in bigram_counts:
-                q1 = trigram_counts[(sen[i - 2], sen[i - 1], sen[i])] / float(bigram_counts[(sen[i - 1], sen[i])])
+            if (sen[i - 2], sen[i - 1], sen[i]) in trigram_counts and (sen[i - 2], sen[i - 1]) in bigram_counts:
+                q1 = trigram_counts[(sen[i - 2], sen[i - 1], sen[i])] / float(bigram_counts[(sen[i - 2], sen[i - 1])])
 
-            if (sen[i - 1], sen[i]) in bigram_counts and sen[i] in unigram_counts:
-                q2 = bigram_counts[(sen[i - 1], sen[i])] / float(unigram_counts[sen[i]])
+            if (sen[i - 1], sen[i]) in bigram_counts and sen[i - 1] in unigram_counts:
+                q2 = bigram_counts[(sen[i - 1], sen[i])] / float(unigram_counts[sen[i - 1]])
 
             if sen[i] in unigram_counts:
                 q3 = unigram_counts[sen[i]] / float(train_token_count)
@@ -92,8 +92,21 @@ def test_ngram():
     print "#tokens: " + str(token_count)
     perplexity = evaluate_ngrams(S_dev, trigram_counts, bigram_counts, unigram_counts, token_count, 0.5, 0.4)
     print "#perplexity: " + str(perplexity)
-    ### YOUR CODE HERE
-    ### END YOUR CODE
+
+    best_lambdas = (0.5, 0.4)
+    min_perplexity = perplexity
+    for lambda1 in np.arange(0, 1.01, 0.01):
+        for lambda2 in np.arange(0, 1.01-lambda1, 0.01):
+            perplexity = evaluate_ngrams(S_dev, trigram_counts, bigram_counts, unigram_counts, token_count, lambda1,
+                                         lambda2)
+            # print "#Calculating preplexity for (lambda1, lambda2) = " + str(
+            #     (lambda1, lambda2)) + ", preplexity = " + str(perplexity)
+            if perplexity < min_perplexity:
+                min_perplexity, best_lambdas = perplexity, (lambda1, lambda2)
+                # print "#update min perplexity: " + str(min_perplexity) + ", got for (lambda1, lambda2) = " + str(
+                #     best_lambdas)
+
+    print "#min perplexity: " + str(min_perplexity) + ", got for (lambda1, lambda2) = " + str(best_lambdas)
 
 
 if __name__ == "__main__":
