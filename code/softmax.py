@@ -13,31 +13,34 @@ def softmax(x):
     http://docs.scipy.org/doc/numpy/user/basics.broadcasting.html
 
     You should also make sure that your code works for a single
-    N-dimensional vector (treat the vector as a single row) and
-    for M x N matrices. This may be useful for testing later. Also,
+    D-dimensional vector (treat the vector as a single row) and
+    for N x D matrices. This may be useful for testing later. Also,
     make sure that the dimensions of the output match the input.
 
     You must implement the optimization in problem 1(a) of the
     written assignment!
 
     Arguments:
-    x -- A N dimensional vector or M x N dimensional numpy matrix.
+    x -- A D dimensional vector or N x D dimensional numpy matrix.
 
     Return:
     x -- You are allowed to modify x in-place
     """
     orig_shape = x.shape
+    x = x.astype(float) # treat the array as a float array 
 
     if len(x.shape) > 1:
         # Matrix
-        ### YOUR CODE HERE
-        raise NotImplementedError
-        ### END YOUR CODE
+        rows = x.shape[0] # number of rows in matrix
+        max_each_row = np.max(x, axis = 1)  # maximize each row seperately 
+        exp = np.exp(x - max_each_row.reshape((rows, 1))) # calculate the exponent (including transposing the max_each_row vector)
+        sum_each_row = np.sum(exp, axis = 1) # summarize each row (from exponent matrix) seperately
+        x = exp / sum_each_row.reshape((rows, 1)) # the division is: each element in ex row is divided by the corresponding sum element.
+
     else:
         # Vector
-        ### YOUR CODE HERE
-        raise NotImplementedError
-        ### END YOUR CODE
+        exp = np.exp(x - np.max(x)) # the result is a vector
+        x = exp / exp.sum() 
 
     assert x.shape == orig_shape
     return x
