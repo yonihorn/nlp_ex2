@@ -33,15 +33,15 @@ def train_ngrams(dataset):
     token_count = 0
 
     for sen in dataset:
-        for i in range(2, len(sen)):
+        for i in range(len(sen)):
             unigram_counts[sen[i]] = unigram_counts.get(sen[i], 0) + 1
-            # if i > 1:
-            bigram = (sen[i - 1], sen[i])
-            bigram_counts[bigram] = bigram_counts.get(bigram, 0) + 1
-            # if i > 2:
-            trigram = (sen[i - 2], sen[i - 1], sen[i])
-            trigram_counts[trigram] = trigram_counts.get(trigram, 0) + 1
-            token_count += 1
+            if i >= 1:
+                bigram = (sen[i - 1], sen[i])
+                bigram_counts[bigram] = bigram_counts.get(bigram, 0) + 1
+            if i >= 2:
+                trigram = (sen[i - 2], sen[i - 1], sen[i])
+                trigram_counts[trigram] = trigram_counts.get(trigram, 0) + 1
+                token_count += 1
 
     return trigram_counts, bigram_counts, unigram_counts, token_count
 
@@ -51,15 +51,17 @@ def evaluate_ngrams(eval_dataset, trigram_counts, bigram_counts, unigram_counts,
     Goes over an evaluation dataset and computes the perplexity for it with
     the current counts and a linear interpolation
     """
-    perplexity = 0
+    perplexity = 0.0
     lambda3 = 1 - lambda1 - lambda2
 
-    logp = float(0)
+    l = float(0)
     M = 0
     for sen in eval_dataset:
-        for i in range(2, len(sen)):
+        for i in range(2, len(sen)-1):
+
             M += 1
             q1, q2, q3 = 0, 0, 0
+
             if (sen[i - 2], sen[i - 1], sen[i]) in trigram_counts and (sen[i - 2], sen[i - 1]) in bigram_counts:
                 q1 = trigram_counts[(sen[i - 2], sen[i - 1], sen[i])] / float(bigram_counts[(sen[i - 2], sen[i - 1])])
 
@@ -69,13 +71,29 @@ def evaluate_ngrams(eval_dataset, trigram_counts, bigram_counts, unigram_counts,
             if sen[i] in unigram_counts:
                 q3 = unigram_counts[sen[i]] / float(train_token_count)
 
-            logqi = np.log2(lambda1 * q1 + lambda2 * q2 + lambda3 * q3)
-            logp += logqi
+            p = lambda1 * q1 + lambda2 * q2 + lambda3 * q3
+            l += np.log2(p)
 
-    l = logp / M
+    l = l / M
     perplexity = np.exp2(-l)
 
     return perplexity
+
+def grid_search(trigram_counts, bigram_counts, unigram_counts, token_count):
+
+    min_perplexity = 10000
+    for lambda1 in np.arange(0, 1.01, 0.05):
+        for lambda2 in np.arange(0, 1.01 - lambda1, 0.05):
+            perplexity = evaluate_ngrams(S_dev, trigram_counts, bigram_counts, unigram_counts, token_count, lambda1,
+                                         lambda2)
+            print "#Calculating preplexity for (lambda1, lambda2) = " + str(
+                (lambda1, lambda2)) + ", preplexity = " + str(perplexity)
+            if perplexity < min_perplexity:
+                min_perplexity, best_lambdas = perplexity, (lambda1, lambda2)
+                print "#update min perplexity: " + str(min_perplexity) + ", got for (lambda1, lambda2) = " + str(
+                    best_lambdas)
+
+    print "#min perplexity: " + str(min_perplexity) + ", got for (lambda1, lambda2) = " + str(best_lambdas)
 
 
 def test_ngram():
@@ -93,20 +111,7 @@ def test_ngram():
     perplexity = evaluate_ngrams(S_dev, trigram_counts, bigram_counts, unigram_counts, token_count, 0.5, 0.4)
     print "#perplexity: " + str(perplexity)
 
-    best_lambdas = (0.5, 0.4)
-    min_perplexity = perplexity
-    for lambda1 in np.arange(0, 1.01, 0.01):
-        for lambda2 in np.arange(0, 1.01-lambda1, 0.01):
-            perplexity = evaluate_ngrams(S_dev, trigram_counts, bigram_counts, unigram_counts, token_count, lambda1,
-                                         lambda2)
-            # print "#Calculating preplexity for (lambda1, lambda2) = " + str(
-            #     (lambda1, lambda2)) + ", preplexity = " + str(perplexity)
-            if perplexity < min_perplexity:
-                min_perplexity, best_lambdas = perplexity, (lambda1, lambda2)
-                # print "#update min perplexity: " + str(min_perplexity) + ", got for (lambda1, lambda2) = " + str(
-                #     best_lambdas)
-
-    print "#min perplexity: " + str(min_perplexity) + ", got for (lambda1, lambda2) = " + str(best_lambdas)
+    #grid_search(trigram_counts, bigram_counts, unigram_counts, token_count)
 
 
 if __name__ == "__main__":
